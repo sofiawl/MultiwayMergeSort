@@ -1,26 +1,29 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 size_t RUN_SIZE = 1000;
 
-void trocar(size_t x, size_t y){
+void trocar(size_t *v, size_t i, size_t j){
     size_t h;
-    h = x;
-    x = y;
-    y = h;
+    h = v[i];
+    v[i] = v[j];
+    v[j] = h;
 
     return;
 } 
 
 size_t particionar(size_t *v, size_t a, size_t b){
-    size_t x = v[b];
+    size_t pivo = v[b];
     size_t m = a;
 
     for(size_t i = a; i < b; i++){
-        if (v[i] <= x)
+        if (v[i] <= pivo){
+            trocar(v, m, i);
             m++;
+        }
     }
 
-    trocar(v[m], v[b]);
+    trocar(v, m, b);
     return m;
 }
 
@@ -31,8 +34,8 @@ void quicksort(size_t *v, size_t a, size_t b){
     quicksort(v, m+1, b);
 }
 
-size_t main(){
-    const char file_name = 'entrada.txt';
+int main(){
+    const char file_name = "entrada.txt";
     char run_name[20];
 
     FILE *fp = fopen(file_name, 'r+');
@@ -47,8 +50,9 @@ size_t main(){
     rewind(fp);
     size_t offset = RUN_SIZE;
     size_t count_run = 1;
+    // corrigir o loop
     while (offset < file_size) {
-        fread (data, sizeof(int), 1000, fp);
+        fread (data, sizeof(size_t), 1000, fp);
         fseek(fp, offset, SEEK_CUR);
         offset += RUN_SIZE;
 
@@ -62,7 +66,7 @@ size_t main(){
         if (!run) return 1;
 
         rewind(run);
-        fwrite(data, sizeof(int), 1000, run);
+        fwrite(data, sizeof(size_t), 1000, run);
 
         count_run++;
     }
