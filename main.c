@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 size_t RUN_SIZE = 1000;
 
@@ -77,10 +78,32 @@ void merge(size_t *v, size_t a, size_t m, size_t b){
             j--;
         }
 
-        u[k++] = v[aux];
+        u[k] = v[aux];
+        k++;
     }
 
     copiar(u, v, a, b);
+    return;
+}
+
+void merge_sort(size_t *v, size_t a, size_t b){
+    if (a >= b)
+        return;
+
+    size_t m = (b - a) /2;
+    merge_sort(v, a, m);
+    merge_sort(v, m+1, b);
+    merge(v, a, m, b);
+
+    return;
+}
+
+void print_vet(size_t *vet, size_t vet_size){
+
+    for (size_t i = 0; i < vet_size; i++){
+        printf("%d ", vet[i]);
+    }
+    printf("/n");
     return;
 }
 
@@ -102,12 +125,15 @@ int main(){
     size_t count_run = 1;
     // corrigir o loop
     while (offset < file_size) {
-        fread (data, sizeof(size_t), 1000, fp);
+        fread (data, sizeof(size_t), RUN_SIZE, fp);
         fseek(fp, offset, SEEK_CUR);
         offset += RUN_SIZE;
 
+        print_vet(data, RUN_SIZE);
         // ORDENAÇÃO
         heap_sort(data, RUN_SIZE);    
+
+        printf(data, RUN_SIZE);
 
         // GRAVAÇÃO
         sprintf(run_name, "run%d.txt", count_run);
@@ -115,14 +141,33 @@ int main(){
         if (!run) return 1;
 
         rewind(run);
-        fwrite(data, sizeof(size_t), 1000, run);
+        fwrite(data, sizeof(size_t), RUN_SIZE, run);
 
+        fclose(run);
         count_run++;
     }
 
     // INTERCALAÇÃO
-    for (size_t i = 1; i <= count_run; i++) {
+    size_t file_size;
+    stat(file_name, &file_size);
+    size_t run_size = RUN_SIZE;
+    size_t new_run_size = 0;
+    while (new_run_size != 1){ 
+        new_run_size = 1;       
+        for (size_t i = 1; i < count_run; i+2) {
+            sprintf(run_name, "run%d.txt", i);
+            FILE *run1 = fopen(run_name, 'w+');
+            if (!run1) return 1;
 
+
+            sprintf(run_name, "run%d.txt", i+1);
+            FILE *run2 = fopen(run_name, 'w+');
+            if (!run2) return 1;
+
+
+            fclose(run1);
+            fclose(run2);
+        }
 
     }
 
