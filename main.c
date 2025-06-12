@@ -14,8 +14,8 @@ void trocar(size_t *v, size_t i, size_t j){
 } 
 
 void min_heapfy(size_t *h, size_t i, size_t n){
-    size_t left = i * 2 ;
-    size_t right = i * 2 + 1;
+    size_t left = i * 2 + 1;
+    size_t right = i * 2 + 2;
     size_t min_idx;
 
     if ((left <= n) && (h[left] < h[i]))
@@ -61,54 +61,48 @@ void copiar(size_t *final, size_t *init, size_t a, size_t b){
 
     return;
 }
-void merge(size_t *v, size_t a, size_t m, size_t b){
-    if (a >= b)
-        return;
 
-    size_t n = b - a + 1;
-    size_t u[n];
-    size_t i = b, j = m, k = 0;
+size_t *merge(size_t *v, size_t *w, size_t size_v, size_t size_w){
+    size_t n = size_v + size_w;
+    size_t *u = malloc (sizeof(size_t) * (n));
+    if (!u) return 1;
+
+    size_t set = 0;
+    size_t i = size_v - 1, j = size_w - 1, k = 0;
     size_t aux;
     while(k < n){
-        if (j < a || (i >= m && v[i] <= v[j])){
+        if (j < 0 || (i >= size_v && v[i] <= w[j])){
             aux = i;
             i--;
+            set = 1;
         } else {
             aux = j;
             j--;
+            set = 0;
         }
 
-        u[k] = v[aux];
+        if (set)
+            u[k] = v[aux];
+        else 
+            u[k] = w[aux];
+
         k++;
     }
 
-    copiar(u, v, a, b);
-    return;
-}
-
-void merge_sort(size_t *v, size_t a, size_t b){
-    if (a >= b)
-        return;
-
-    size_t m = (b - a) /2;
-    merge_sort(v, a, m);
-    merge_sort(v, m+1, b);
-    merge(v, a, m, b);
-
-    return;
+    return u;
 }
 
 void print_vet(size_t *vet, size_t vet_size){
 
     for (size_t i = 0; i < vet_size; i++){
-        printf("%d ", vet[i]);
+        printf("%zu ", vet[i]);
     }
     printf("/n");
     return;
 }
 
 int main(){
-    const char file_name = "entrada.txt";
+    const char *file_name = "entrada.txt";
     char run_name[20];
 
     FILE *fp = fopen(file_name, 'r+');
@@ -121,13 +115,13 @@ int main(){
     fseek(fp, 0, SEEK_END);
     long int file_size = ftell(fp);
     rewind(fp);
-    size_t offset = RUN_SIZE;
+
+    size_t total_runs = file_size / sizeof(size_t);
     size_t count_run = 1;
+
     // corrigir o loop
-    while (offset < file_size) {
-        fread (data, sizeof(size_t), RUN_SIZE, fp);
-        fseek(fp, offset, SEEK_CUR);
-        offset += RUN_SIZE;
+    while (!feof(fp) && count_run * RUN_SIZE < file_size) {
+        size_t read_size = fread (data, sizeof(size_t), RUN_SIZE, fp);
 
         print_vet(data, RUN_SIZE);
         // ORDENAÇÃO
@@ -136,41 +130,47 @@ int main(){
         printf(data, RUN_SIZE);
 
         // GRAVAÇÃO
-        sprintf(run_name, "run%d.txt", count_run);
+        sprintf(run_name, "run%zu.txt", count_run);
         FILE *run = fopen(run_name, 'w+');
         if (!run) return 1;
-
-        rewind(run);
-        fwrite(data, sizeof(size_t), RUN_SIZE, run);
+        fwrite(data, sizeof(size_t), read_size, run);
 
         fclose(run);
         count_run++;
     }
 
     // INTERCALAÇÃO
-    size_t file_size;
-    stat(file_name, &file_size);
-    size_t run_size = RUN_SIZE;
-    size_t new_run_size = 0;
-    while (new_run_size != 1){ 
-        new_run_size = 1;       
-        for (size_t i = 1; i < count_run; i+2) {
-            sprintf(run_name, "run%d.txt", i);
-            FILE *run1 = fopen(run_name, 'w+');
-            if (!run1) return 1;
+    // abre arquivo run que terá todos dados no final
+    FILE *out = fopen("saida.txt", 'r+');
+    if (!out) return 1;
+    rewind(out);
 
+    size_t *buffer = NULL;
+    if (!buffer) return 1;
+    size_t buffer_size = 0;
 
-            sprintf(run_name, "run%d.txt", i+1);
-            FILE *run2 = fopen(run_name, 'w+');
-            if (!run2) return 1;
+    for (size_t i = 1; i <= count_run; i++) {
+        sprintf(run_name, "run%zu.txt", i);
+        FILE *run_fp = fopen(run_name, "rb");
+        if (!run_fp) return 1;
 
+        size_t *chunk = malloc(RUN_SIZE * sizeof(size_t));
+        size_t read_size = fread(chunk, sizeof(size_t), RUN_SIZE, run_fp);
+        fclose(run_fp);
 
-            fclose(run1);
-            fclose(run2);
+        if (!buffer) {
+            buffer = chunk;
+            buffer_size = read_size;
+        } else {
+            size_t *merged = merge(buffer, chunk, buffer_size, read_size);
+            free(buffer);
+            free(chunk);
+            buffer = merged;
+            buffer_size += read_size;
         }
-
     }
 
+    fclose(out);
     free(data);
     fclose(fp);
     return 0;
